@@ -98,7 +98,7 @@ def find_peaks_positions(mask_image, imagem):
 def main():
   # Captura uma imagem do manômetro
   camera = cv2.VideoCapture(1)  #camera
-  #camera = cv2.VideoCapture("WhatsApp Video 2024-03-28 at 09.45.25.mp4") # 
+  #camera = cv2.VideoCapture("WhatsApp Video 2024-03-28 at 09.45.25.mp4") #video para teste offline
   
   while True:
     ret, imagem = camera.read()
