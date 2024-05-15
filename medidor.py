@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from collections import deque
+import math
 
 def segmentar_menisco_cor(imagem):
   # Converte a imagem para o espaço de cores HSV
@@ -93,12 +95,98 @@ def find_peaks_positions(mask_image, imagem):
     
     return mask_image, imagem, h_diff
 
+def media_movel(nova_medida, janela=10):
+  """
+  Calcula a média móvel de uma série de medidas.
 
+  Args:
+      nova_medida: A nova medida a ser adicionada à janela.
+      janela: O tamanho da janela da média móvel (número de medidas).
+
+  Returns:
+      A média móvel atualizada.
+  """
+  # Inicializa a fila (deque) para armazenar as medidas da janela
+  global medidas  # Torna a variável acessível dentro da função
+  if "medidas" not in globals():  # Verifica se a variável já existe
+    medidas = deque(maxlen=janela)
+  
+  #Verificad a validade da nova medida
+  if nova_medida == 0:
+    if len(medidas) == 0:  # Verifica se a fila está vazia
+      return 0  # Retorna 0 se não houver medidas válidas
+    else:
+      return sum(medidas) / len(medidas)
+
+  # Adiciona a nova medida à fila
+  medidas.append(nova_medida)
+  
+  # Calcula e retorna a média móvel
+  return sum(medidas) / len(medidas)
+
+def calcular_velocidade(D, d, Beta, DeltaP, rho, Ny, g, V_chute, F_1, F_2):
+  # Iterações para encontrar o Cd verdadeiro
+  tol = 1e-6  # Tolerância para a convergência
+  max_iter = 100  # Número máximo de iterações
+  it = 0  # Contador de iterações
+  convergiu = False
+
+  while not convergiu and it < max_iter:
+    it += 1
+
+    # Calcula o número de Reynolds com o chute inicial de V
+    R_d = ((V_chute * (D * 10**(-3)))/ Ny)
+
+    # Calcula o coeficiente de descarga com o Reynolds atual
+    Cd = 0.5959 + 0.0312 * Beta**2.1 - 0.184 * Beta**8 + 91.71 * Beta**2.5 * (R_d)**(-0.75) + (((0.09 * Beta**4) / (1 - Beta**4)) *F_1) - ((0.0337 * Beta**3) * F_2)
+
+    # Calcula a nova velocidade do fluxo com o Cd atual
+    V_orifício = Cd * ((2 * (DeltaP) / rho) / (1 - Beta**4))**(1/2)
+
+    # Novo chute para V antes da placa
+    V_nova = V_orifício * (Beta**2)
+
+    # Verifica a convergência
+    erro = abs(V_nova - V_chute )/ V_chute
+    if erro < tol:
+      convergiu = True
+
+    # Atualiza o chute inicial de V para a próxima iteração
+    V_chute = V_nova
+
+  return V_chute
+
+# ------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def main():
   # Captura uma imagem do manômetro
-  camera = cv2.VideoCapture(1)  #camera
+  camera = cv2.VideoCapture(0)  #camera
   #camera = cv2.VideoCapture("WhatsApp Video 2024-03-28 at 09.45.25.mp4") #video para teste offline
+
+  # Parâmetros do problema
+  D = 43.2  # Diâmetro interno da tubulação [mm]
+  escolha = 3 # "Vena-contractive taps" (~1D à montante e no local da Vena à jusante) se aproximam de Flange taps
+  d_1 = 8.0   # [mm]
+  d_2 = 15.0  # [mm]
+  d_3 = 22.0  # [mm]
+  Beta_1 = d_1 / D
+  Beta_2 = d_2 / D
+  Beta_3 = d_3 / D
+
+  F_1 = 0.4333  # Cria uma variável global
+  F_2 = 0.5880  # Cria uma variável global
+
+  # Parâmetros do fluido
+  # Considerando ar a 20 graus celcius -> https://www.engineersedge.com/physics/viscosity_of_air_dynamic_and_kinematic_14483.htm
+  rho_ar = 1.184  # [kg/m^3]
+  Ny = 1.516E-5  # [m^2/s]
+  g = 9.81  # [m/s^2]
+
+  # Chute inicial de velocidade
+  V_chute = 2  # [m/s]  -> Chute inicial para a velocidade
+
+  # Considerando água a 20 graus celcius -> https://www.engineersedge.com/physics/water__density_viscosity_specific_weight_13146.htm
+  rho_agua = 998.21 # [kg/m^3]
   
   while True:
     ret, imagem = camera.read()
@@ -108,10 +196,21 @@ def main():
 
   # Encontra os pontos de menisco
     segmentacao, imagem, h_diff = find_peaks_positions(segmentacao, imagem)
-    print(h_diff)
+    altura_filtrada = media_movel(h_diff)
+    hdiff_mm = 10/54 * altura_filtrada 
 
+  # Cálculo da diferença de pressão
+    DeltaP = rho_agua*g*(hdiff_mm)*10**(-3) #[Pa]
+
+  # Calcular velocidade
+    V = calcular_velocidade(D, d_1, Beta_1, DeltaP, rho_ar, Ny, g, V_chute, F_1, F_2)
+
+  # Calcular vazao
+    Vazao = math.pi * (D**2)/4 *  V*(10**(-3))
+    print("Vazão medida:", Vazao)
+    
   # Mostra a imagem segmentada e a altura do menisco
-    cv2.imshow("Mascara", segmentacao)
+    # cv2.imshow("Mascara", segmentacao)
     cv2.imshow("Imagem", imagem)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -122,7 +221,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
-
-#funcao filtro media movel
-#funcao de calibração pixel -> vazao
