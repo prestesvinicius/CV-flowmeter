@@ -203,12 +203,28 @@ def main():
     DeltaP = rho_agua*g*(hdiff_mm)*10**(-3) #[Pa]
 
   # Calcular velocidade
-    V = calcular_velocidade(D, d_1, Beta_1, DeltaP, rho_ar, Ny, g, V_chute, F_1, F_2)
+    V = calcular_velocidade(D, d_3, Beta_1, DeltaP, rho_ar, Ny, g, V_chute, F_1, F_2)
 
   # Calcular vazao
     Vazao = math.pi * (D**2)/4 *  V*(10**(-3))
     print("Vazão medida:", Vazao)
     
+  # Especificando o tipo de fonte e outras configurações do texto
+    posicao_centro_superior = (int(imagem.shape[1] / 2), int(imagem.shape[0] * 0.1))
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    escala_fonte = 1
+    cor_texto = (255, 255, 255)  # Branco em BGR
+    espessura_linha = 2
+
+# Adicionando o primeiro valor à imagem
+    hdiff_mm_str = str(hdiff_mm)
+    imagem = cv2.putText(imagem, hdiff_mm_str, posicao_centro_superior, font, escala_fonte, cor_texto, espessura_linha, cv2.LINE_AA)
+
+# Adicionando o segundo valor à imagem
+    vazao_str = str(Vazao)
+    imagem = cv2.putText(imagem, vazao_str, (posicao_centro_superior[0], posicao_centro_superior[1] + 25), font, escala_fonte, cor_texto, espessura_linha, cv2.LINE_AA)
+
+
   # Mostra a imagem segmentada e a altura do menisco
     # cv2.imshow("Mascara", segmentacao)
     cv2.imshow("Imagem", imagem)
