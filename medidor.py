@@ -187,6 +187,9 @@ def main():
 
   # Considerando água a 20 graus celcius -> https://www.engineersedge.com/physics/water__density_viscosity_specific_weight_13146.htm
   rho_agua = 998.21 # [kg/m^3]
+
+  #Ponto de tensão
+  tensao = 4
   
   while True:
     ret, imagem = camera.read()
@@ -203,7 +206,7 @@ def main():
     DeltaP = rho_agua*g*(hdiff_mm)*10**(-3) #[Pa]
 
   # Calcular velocidade
-    V = calcular_velocidade(D, d_3, Beta_1, DeltaP, rho_ar, Ny, g, V_chute, F_1, F_2)
+    V = calcular_velocidade(D, d_1, Beta_1, DeltaP, rho_ar, Ny, g, V_chute, F_1, F_2)
 
   # Calcular vazao
     Vazao = math.pi * (D**2)/4 *  V*(10**(-3))
@@ -226,7 +229,7 @@ def main():
 
 
   # Mostra a imagem segmentada e a altura do menisco
-    # cv2.imshow("Mascara", segmentacao)
+    cv2.imshow("Mascara", segmentacao)
     cv2.imshow("Imagem", imagem)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
