@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 from collections import deque
 import math
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
 def segmentar_menisco_cor(imagem):
   # Converte a imagem para o espaço de cores HSV
@@ -136,6 +138,8 @@ def calcular_velocidade(D, d, Beta, DeltaP, rho, Ny, g, V_chute, F_1, F_2):
 
     # Calcula o número de Reynolds com o chute inicial de V
     R_d = ((V_chute * (D * 10**(-3)))/ Ny)
+    
+    #R_d = R_d if R_d > 0 else 0.000001
 
     # Calcula o coeficiente de descarga com o Reynolds atual
     Cd = 0.5959 + 0.0312 * Beta**2.1 - 0.184 * Beta**8 + 91.71 * Beta**2.5 * (R_d)**(-0.75) + (((0.09 * Beta**4) / (1 - Beta**4)) *F_1) - ((0.0337 * Beta**3) * F_2)
@@ -160,8 +164,8 @@ def calcular_velocidade(D, d, Beta, DeltaP, rho, Ny, g, V_chute, F_1, F_2):
 
 def main():
   # Captura uma imagem do manômetro
-  camera = cv2.VideoCapture(0)  #camera
-  #camera = cv2.VideoCapture("WhatsApp Video 2024-03-28 at 09.45.25.mp4") #video para teste offline
+  #camera = cv2.VideoCapture(0)  #camera
+  camera = cv2.VideoCapture("WhatsApp Video 2024-03-28 at 09.45.25.mp4") #video para teste offline
 
   # Parâmetros do problema
   D = 43.2  # Diâmetro interno da tubulação [mm]
@@ -187,9 +191,6 @@ def main():
 
   # Considerando água a 20 graus celcius -> https://www.engineersedge.com/physics/water__density_viscosity_specific_weight_13146.htm
   rho_agua = 998.21 # [kg/m^3]
-
-  #Ponto de tensão
-  tensao = 4
   
   while True:
     ret, imagem = camera.read()
@@ -200,31 +201,35 @@ def main():
   # Encontra os pontos de menisco
     segmentacao, imagem, h_diff = find_peaks_positions(segmentacao, imagem)
     altura_filtrada = media_movel(h_diff)
-    hdiff_mm = 10/54 * altura_filtrada 
+    hdiff_mm = 20/100 * altura_filtrada
 
   # Cálculo da diferença de pressão
     DeltaP = rho_agua*g*(hdiff_mm)*10**(-3) #[Pa]
+    print(DeltaP)
 
   # Calcular velocidade
-    V = calcular_velocidade(D, d_1, Beta_1, DeltaP, rho_ar, Ny, g, V_chute, F_1, F_2)
+    V = calcular_velocidade(D, d_2, Beta_2, DeltaP, rho_ar, Ny, g, V_chute, F_1, F_2)
 
   # Calcular vazao
     Vazao = math.pi * (D**2)/4 *  V*(10**(-3))
-    print("Vazão medida:", Vazao)
     
   # Especificando o tipo de fonte e outras configurações do texto
     posicao_centro_superior = (int(imagem.shape[1] / 2), int(imagem.shape[0] * 0.1))
     font = cv2.FONT_HERSHEY_SIMPLEX
     escala_fonte = 1
-    cor_texto = (255, 255, 255)  # Branco em BGR
+    cor_texto = (0, 0, 0) 
     espessura_linha = 2
 
 # Adicionando o primeiro valor à imagem
+    hdiff_mm = round(hdiff_mm, 3)
     hdiff_mm_str = str(hdiff_mm)
     imagem = cv2.putText(imagem, hdiff_mm_str, posicao_centro_superior, font, escala_fonte, cor_texto, espessura_linha, cv2.LINE_AA)
 
 # Adicionando o segundo valor à imagem
+    Vazao = round(Vazao, 3)
     vazao_str = str(Vazao)
+    print(Vazao)
+    print(hdiff_mm)
     imagem = cv2.putText(imagem, vazao_str, (posicao_centro_superior[0], posicao_centro_superior[1] + 25), font, escala_fonte, cor_texto, espessura_linha, cv2.LINE_AA)
 
 
